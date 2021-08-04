@@ -40,7 +40,7 @@ instance Arbitrary TypeB where
 
 instance Arbitrary Tree where
   arbitrary = oneof [arbitraryTypeBTree
-    ,sized arbitraryTypeATree
+    , sized arbitraryTypeATree
     ]
       where                 
         arbitraryTypeBTree = Tree_TypeB <$> arbitrary
@@ -100,7 +100,14 @@ prop_getCommonNodeNamesExceptBepaOnSameTree t1 =
   getCommonNodeNamesExceptBepa t1 t1 
    == filter noBepa (getNodeNames t1)
 
--- 5. Applying a function over the costs of nodes
+-- 5.  The order in which the arguments are 
+--  passed to the function is irrelevant (modulo sorting)
+prop_orderIrrelevant :: Tree -> Tree -> Bool
+prop_orderIrrelevant t1 t2 =
+  sort (getCommonNodeNamesExceptBepa t1 t2)
+   == sort (getCommonNodeNamesExceptBepa t2 t1)
+
+-- 6. Applying a function over the costs of nodes
 --  does not affect the result of the function
 prop_costIrrelevant :: (Fun Cost  Cost) -> Tree -> Tree -> Bool
 prop_costIrrelevant (Fun _ f) t1 t2 = 
@@ -109,7 +116,7 @@ prop_costIrrelevant (Fun _ f) t1 t2 =
   where 
     over = flip treeCostTraversal
 
--- 6. Node with "bepa" (case insensitive)
+-- 7. Node with "bepa" (case insensitive)
 -- should never be present in the results
 -- (this property should fail)
 prop_bepaNotInGetCommonNamesExceptBepaCI :: Tree -> Tree -> Bool
