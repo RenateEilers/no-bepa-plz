@@ -9,11 +9,11 @@ import Control.Lens
 
 -- types
 newtype Cost = Cost 
-  {_amount :: Float} deriving (Show,Eq)
+  {_amount :: Float} deriving (Show,Eq,Ord)
 makeLenses ''Cost
 
 newtype NodeName = NodeName 
-  {_name :: String}  deriving (Show,Eq)
+  {_name :: String}  deriving (Show,Eq,Ord)
 makeLenses ''NodeName
 
 data NodeInfo = NodeInfo
@@ -42,14 +42,18 @@ makeLenses ''Tree
 -- functions
 getCommonNodeNamesExceptBepa :: Tree -> Tree -> [NodeName]
 getCommonNodeNamesExceptBepa t1 t2 = 
-  getNodeNames t1 `intersect` getNodeNames t2
-     & filter (not . hasBepa)
+  filter (not . hasBepa) commonNodeNames 
+    where 
+      commonNodeNames = getNodeNames t1 `intersect` getNodeNames t2
+  
 
 getNodeNames ::  Tree ->[NodeName]
-getNodeNames t@(Tree_TypeA _ _ ts) =
-  t ^. nodeNameLens : ts ^.. folded . nodeNameLens  
-getNodeNames (Tree_TypeB t) = 
-  t ^. bName : t ^.. bChildren . folded . bName
+getNodeNames (Tree_TypeA i _ ts) = nub $
+  i ^. nodeInfoName : foldMapOf folded getNodeNames ts
+getNodeNames (Tree_TypeB t) = nub $ getNodeNamesTypeB t
+  where 
+    getNodeNamesTypeB t = 
+      t ^. bName : foldMap getNodeNamesTypeB (t ^. bChildren)
 
 -- wrapper function
 treeCostTraversal :: Tree -> (Cost -> Cost) -> Tree 
@@ -71,14 +75,6 @@ typeBCostTraversal f (TypeB c n bs) = TypeB
   <$> f c 
   <*> pure n 
   <*> traverse (typeBCostTraversal f) bs
-       
-nodeNameLens :: Lens' Tree NodeName
-nodeNameLens = lens getter setter
-  where 
-    getter (Tree_TypeA i _ ts) = i ^. nodeInfoName
-    getter (Tree_TypeB t) = t ^. bName
-    setter t@(Tree_TypeA _ _ _) n = t & info . nodeInfoName .~ n
-    setter t@(Tree_TypeB _) n = t & typeB . bName .~ n
-       
+
 hasBepa :: NodeName -> Bool
 hasBepa = isInfixOf "Bepa" . view name

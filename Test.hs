@@ -12,7 +12,7 @@ import Control.Applicative
 
   -- generators
 instance Arbitrary Cost where
-  arbitrary = Cost <$> arbitrary `suchThat` (<=0)
+  arbitrary = Cost <$> arbitrary `suchThat` (>=0)
 
 instance CoArbitrary Cost where
   coarbitrary (Cost c)  = coarbitraryReal c
@@ -39,13 +39,15 @@ instance Arbitrary TypeB where
         <*> halfingList n arbitrary
 
 instance Arbitrary Tree where
-  arbitrary = oneof [arbitraryTypeBTree,sized arbitraryTypeATree]
-    where                 
-      arbitraryTypeBTree = Tree_TypeB <$> arbitrary
-      arbitraryTypeATree n = Tree_TypeA
-        <$> arbitrary 
-        <*> (getPrintableString <$> arbitrary )
-        <*> halfingList n arbitrary
+  arbitrary = oneof [arbitraryTypeBTree
+    ,sized arbitraryTypeATree
+    ]
+      where                 
+        arbitraryTypeBTree = Tree_TypeB <$> arbitrary
+        arbitraryTypeATree n = Tree_TypeA
+          <$> arbitrary 
+          <*> (getPrintableString <$> arbitrary )
+          <*> halfingList n arbitrary
 
 -- to guarantee termination:
 -- create list of at most n elements
@@ -115,6 +117,12 @@ prop_bepaNotInGetCommonNamesExceptBepaCI t1 t2 =
   all noBepaCI $ getCommonNodeNamesExceptBepa t1 t2
     
 return [] -- required for 'quickCheckAll'
+
 -- run this function to test all given properties
 testAllProperties :: IO Bool
-testAllProperties = $quickCheckAll
+testAllProperties = $quickCheckAll 
+
+-- test All properties with given maxSize
+testAllPropertiesWithSize :: Int -> IO Bool
+testAllPropertiesWithSize n = 
+  $forAllProperties $ quickCheckWithResult stdArgs {maxSize = n}
