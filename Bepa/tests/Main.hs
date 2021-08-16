@@ -1,11 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Test where
+module Main where
 
 -- imports
-import Nodes
+import Tree
 import Test.QuickCheck
--- import Test.QuickCheck.Function
 import Data.List
 import qualified Data.Text as T
 import Control.Applicative
@@ -133,3 +132,5 @@ testAllProperties = $quickCheckAll
 testAllPropertiesWithSize :: Int -> IO Bool
 testAllPropertiesWithSize n = 
   $forAllProperties $ quickCheckWithResult stdArgs {maxSize = n}
+
+main = testAllPropertiesWithSize 10

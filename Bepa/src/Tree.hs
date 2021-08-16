@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Nodes where
+module Tree where
 
 -- imports
 
