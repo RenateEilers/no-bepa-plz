@@ -8,6 +8,8 @@ import Test.QuickCheck
 import Data.List
 import qualified Data.Text as T
 import Control.Applicative
+import Test.Tasty
+import Test.Tasty.QuickCheck
 
   -- generators
 instance Arbitrary Cost where
@@ -133,4 +135,4 @@ testAllPropertiesWithSize :: Int -> IO Bool
 testAllPropertiesWithSize n = 
   $forAllProperties $ quickCheckWithResult stdArgs {maxSize = n}
 
-main = testAllPropertiesWithSize 10
+main = defaultMain $ localOption (QuickCheckMaxSize 10) $ testProperties "All" $allProperties
