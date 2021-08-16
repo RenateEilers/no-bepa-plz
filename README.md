@@ -1,4 +1,8 @@
-# Works sample 
+# Building
+To build, run `cabal build --enable-tests`. You can then run the tests with `cabal test`
+
+# The assignment
+## Works sample 
 
 Below is the technical test. Do not hesitate to ask if there are any questions or if you need some clarifications.
 
