@@ -1,3 +1,7 @@
+# Info
+
+The main branch contains the types described in part 1. of the exercise. The branch `safer-types` uses GDP to reduce the number of tests needed to ensure the properties expressed [here](https://github.com/RenateEilers/no-bepa-plz/blob/main/Bepa/tests/Main.hs).
+
 # Building
 To build, run `cabal build --enable-tests`. You can then run the tests with `cabal test`
 
