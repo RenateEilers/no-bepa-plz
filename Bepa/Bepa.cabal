@@ -10,18 +10,18 @@ maintainer:         renate.eilers@tuwien.ac.at
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  Tree
+    exposed-modules:  Tree, Subset
 
     -- Modules included in this library but not exported.
-    -- other-modules:
-    other-extensions: TemplateHaskell
-    build-depends:    base ^>=4.14.2.0, lens
+    -- other-modules: 
+    other-extensions: TemplateHaskell, FlexibleContexts, TypeOperators
+    build-depends:    base ^>=4.14.2.0, lens, gdp
     hs-source-dirs:   src
     default-language: Haskell2010
 
 test-suite test
     type:           exitcode-stdio-1.0    
     main-is:        Main.hs
-    other-modules:  Tree
-    build-depends:  base ^>=4.14.2.0, bepa, QuickCheck, lens, text, tasty, tasty-quickcheck
+    other-modules:  Tree, Subset
+    build-depends:  base ^>=4.14.2.0, bepa, QuickCheck, lens, text, tasty, tasty-quickcheck, gdp
     hs-source-dirs: tests, src

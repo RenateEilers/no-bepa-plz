@@ -1,15 +1,17 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
 -- imports
 import Tree
-import Test.QuickCheck
-import Data.List
+import Test.QuickCheck 
+import Data.List (sort, isInfixOf)
 import qualified Data.Text as T
-import Control.Applicative
-import Test.Tasty
-import Test.Tasty.QuickCheck
+import Test.Tasty (defaultMain,localOption)
+import Test.Tasty.QuickCheck 
+import GDP (the, name, name2)
+import Subset
 
   -- generators
 instance Arbitrary Cost where
@@ -58,6 +60,18 @@ halfingList n gen = do
     m <- choose (0,n)
     vectorOf m $ scale (`div` 2) gen
 
+-- auxiliary function to remove embellishments from the 
+-- result of getCommonNodeNamesExceptBepa for testing
+stripGhostsCommonNodeNamesExceptBepa :: Tree -> Tree -> [NodeName]
+stripGhostsCommonNodeNamesExceptBepa t1 t2 = 
+  name2 t1 t2 $  \t1 t2 -> 
+    map the $ the $ getCommonNodeNamesExceptBepa t1 t2
+
+-- same as above, but for getNodeNames
+stripGhostsNodeNames :: Tree -> [NodeName]
+stripGhostsNodeNames t1 = name t1 $ \t1 -> 
+  the $ getNodeNames t1
+
 -- auxiliary properties
 noBepa :: NodeName -> Bool
 noBepa = not . hasBepa 
@@ -65,7 +79,7 @@ noBepa = not . hasBepa
 -- case insensitive version
 noBepaCI :: NodeName -> Bool
 noBepaCI = 
-  not . isInfixOf (toCaseless "Bepa") . toCaseless . _name
+  not . isInfixOf (toCaseless "Bepa") . toCaseless . _nodeName
     where toCaseless = T.unpack . T.toCaseFold . T.pack
 
 -- properties
@@ -74,46 +88,47 @@ noBepaCI =
 --  of getCommonNodeNamesExceptBepa
 prop_bepaNotInGetCommonNamesExceptBepa :: Tree -> Tree -> Bool
 prop_bepaNotInGetCommonNamesExceptBepa t1 t2 =
-  all noBepa $ getCommonNodeNamesExceptBepa t1 t2
+  all noBepa $ stripGhostsCommonNodeNamesExceptBepa t1 t2
+  
 
 -- 2. If a name occurs in both trees and doesn't 
 -- contian "Bepa", it will be in the results
 prop_noMissingNames :: Tree -> Tree -> Bool
 prop_noMissingNames t1 t2 = all there candidateNames
   where 
-    candidateNames = [name | name <- getNodeNames t1 
-      , name `elem` getNodeNames t2
+    candidateNames = [name | name <- stripGhostsNodeNames t1
+      , name `elem` stripGhostsNodeNames t2
       , noBepa name]
-    there = flip elem $ getCommonNodeNamesExceptBepa t1 t2
+    there = flip elem $ stripGhostsCommonNodeNamesExceptBepa t1 t2
 
 -- 3. All names in the result should be in 
 --  the original trees
 prop_noExtraNames :: Tree -> Tree -> Bool
 prop_noExtraNames t1 t2 = all inInput results 
-  where results = getCommonNodeNamesExceptBepa t1 t2
-        inInput n = n `elem` getNodeNames t1 
-          || n `elem` getNodeNames t2
+  where results = stripGhostsCommonNodeNamesExceptBepa t1 t2
+        inInput n = n `elem` stripGhostsNodeNames t1 
+          || n `elem` stripGhostsNodeNames t2
 
 -- 4. Calling the function on two identical trees
 --  results in the nodes of that do not contain "Bepa"
 prop_getCommonNodeNamesExceptBepaOnSameTree :: Tree -> Bool
 prop_getCommonNodeNamesExceptBepaOnSameTree t1 = 
-  getCommonNodeNamesExceptBepa t1 t1 
-   == filter noBepa (getNodeNames t1)
+  stripGhostsCommonNodeNamesExceptBepa t1 t1 
+   == filter noBepa (stripGhostsNodeNames t1)
 
 -- 5.  The order in which the arguments are 
 --  passed to the function is irrelevant (modulo sorting)
 prop_orderIrrelevant :: Tree -> Tree -> Bool
 prop_orderIrrelevant t1 t2 =
-  sort (getCommonNodeNamesExceptBepa t1 t2)
-   == sort (getCommonNodeNamesExceptBepa t2 t1)
+  sort (stripGhostsCommonNodeNamesExceptBepa t1 t2)
+   == sort (stripGhostsCommonNodeNamesExceptBepa t2 t1)
 
 -- 6. Applying a function over the costs of nodes
 --  does not affect the result of the function
-prop_costIrrelevant :: (Fun Cost  Cost) -> Tree -> Tree -> Bool
+-- prop_costIrrelevant :: (Fun Cost  Cost) -> Tree -> Tree -> Bool
 prop_costIrrelevant (Fun _ f) t1 t2 = 
-  getCommonNodeNamesExceptBepa t1 t2
-   == getCommonNodeNamesExceptBepa (f `over` t1) (f `over` t2)
+  stripGhostsCommonNodeNamesExceptBepa t1 t2
+   == stripGhostsCommonNodeNamesExceptBepa (f `over` t1) (f `over` t2)
   where 
     over = flip treeCostTraversal
 
@@ -122,7 +137,7 @@ prop_costIrrelevant (Fun _ f) t1 t2 =
 -- (this property should fail)
 prop_bepaNotInGetCommonNamesExceptBepaCI :: Tree -> Tree -> Bool
 prop_bepaNotInGetCommonNamesExceptBepaCI t1 t2 =
-  all noBepaCI $ getCommonNodeNamesExceptBepa t1 t2
+  all noBepaCI $ stripGhostsCommonNodeNamesExceptBepa t1 t2
     
 return [] -- required for 'quickCheckAll'
 

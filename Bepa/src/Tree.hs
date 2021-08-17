@@ -1,11 +1,27 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 
-module Tree where
+module Tree
+  ( Cost (..)
+  , NodeName (..)
+  , NodeInfo (..)
+  , TypeB (..)
+  , Tree (..)
+  , NodeNames()
+  , BepaFree()
+  , bepaFree
+  , getNodeNames  
+  , getCommonNodeNamesExceptBepa
+  , treeCostTraversal
+  , hasBepa
+  ) where
 
 -- imports
 
-import Data.List
-import Control.Lens
+import Data.List (intersect, nub, isInfixOf)
+import Control.Lens (makeLenses, view, (^.), (%~), (&), folded, foldMapOf, Traversal')
+import Subset
+import GDP (type (?),type (~~),Defn,defn,the,name,name2,(...),unname)
 
 -- types
 newtype Cost = Cost 
@@ -13,7 +29,7 @@ newtype Cost = Cost
 makeLenses ''Cost
 
 newtype NodeName = NodeName 
-  {_name :: String}  deriving (Show,Eq,Ord)
+  {_nodeName :: String}  deriving (Show,Eq,Ord)
 makeLenses ''NodeName
 
 data NodeInfo = NodeInfo
@@ -31,7 +47,7 @@ makeLenses ''TypeB
 
 data Tree = Tree_TypeA 
   {_info :: NodeInfo
-  , _misc :: String
+  , _misc :: String 
   , _aChildren :: [Tree]
   }
   | Tree_TypeB 
@@ -39,23 +55,38 @@ data Tree = Tree_TypeA
   deriving (Show,Eq)
 makeLenses ''Tree
 
+
+newtype NodeNames a = NodeNames Defn
+
+newtype BepaFree a = BepaFree Defn
+
+bepaFree :: (NodeName -> Bool) ~~ BepaFree a 
+bepaFree = defn (not . hasBepa)
+
 -- functions
-getCommonNodeNamesExceptBepa :: Tree -> Tree -> [NodeName]
-getCommonNodeNamesExceptBepa t1 t2 = 
-  filter (not . hasBepa) commonNodeNames 
+getCommonNodeNamesExceptBepa :: 
+  Tree ~~ a 
+  -> Tree ~~ b 
+  -> [NodeName ? BepaFree] ? (Superset (Intersection (NodeNames a) (NodeNames b)))  
+getCommonNodeNamesExceptBepa t1 t2 =
+    unname $ filtered ... (supersetIsSubsetFlipped filterIsSubset)
     where 
-      commonNodeNames = getNodeNames t1 `intersect` getNodeNames t2
-  
+      namesT1 = getNodeNames t1
+      namesT2 = getNodeNames t2
+      commonNodeNames = namesT1 `intersectGDP` namesT2
+      filtered = filterGDP bepaFree commonNodeNames       
 
-getNodeNames ::  Tree ->[NodeName]
-getNodeNames (Tree_TypeA i _ ts) = nub $
-  i ^. nodeInfoName : foldMapOf folded getNodeNames ts
-getNodeNames (Tree_TypeB t) = nub $ getNodeNamesTypeB t
+getNodeNames :: Tree ~~ a ->[NodeName] ~~ NodeNames a
+getNodeNames = defn . nub . getNodeNames' . the
   where 
-    getNodeNamesTypeB t = 
-      t ^. bName : foldMap getNodeNamesTypeB (t ^. bChildren)
+    getNodeNames' (Tree_TypeA i _ ts) = 
+      i ^. nodeInfoName : foldMapOf folded getNodeNames' ts
+    getNodeNames' (Tree_TypeB t) =  getNodeNamesTypeB t
+      where 
+        getNodeNamesTypeB t = 
+          t ^. bName : foldMap getNodeNamesTypeB (t ^. bChildren)
 
--- wrapper function
+-- -- wrapper function
 treeCostTraversal :: Tree -> (Cost -> Cost) -> Tree 
 treeCostTraversal t f = t & treeCostTraversal' %~ f
 
@@ -77,4 +108,4 @@ typeBCostTraversal f (TypeB c n bs) = TypeB
   <*> traverse (typeBCostTraversal f) bs
 
 hasBepa :: NodeName -> Bool
-hasBepa = isInfixOf "Bepa" . view name
+hasBepa = isInfixOf "Bepa" . view nodeName
